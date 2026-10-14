@@ -34,7 +34,7 @@ with urllib.request.urlopen(req, timeout=60) as r:
     xml = r.read().decode("utf-8", "replace")
 
 def campo(bloque, nombre):
-    m = re.search(rf"<(?:\w+:)?{nombre}>([^<]*)</(?:\w+:)?{nombre}>", bloque)
+    m = re.search(rf"<(?:\w+:)?{nombre}\b[^>]*>([^<]*)</(?:\w+:)?{nombre}>", bloque)
     return m.group(1).strip() if m else None
 
 estado = campo(xml, "status")
@@ -43,7 +43,7 @@ if estado is not None and estado != "1":
     sys.exit(1)
 
 datos = []
-for bloque in re.findall(r"<(?:\w+:)?datoscotizaciones\.dato>(.*?)</(?:\w+:)?datoscotizaciones\.dato>", xml, re.S):
+for bloque in re.findall(r"<(?:\w+:)?datoscotizaciones\.dato\b[^>]*>(.*?)</(?:\w+:)?datoscotizaciones\.dato>", xml, re.S):
     fecha, tcv = campo(bloque, "Fecha"), campo(bloque, "TCV")
     if fecha and tcv:
         try:
