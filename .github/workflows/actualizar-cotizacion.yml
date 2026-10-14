@@ -1,4 +1,4 @@
-"""
+
 Consulta el dólar interbancario (billete, código 2225) en el servicio web
 público del BCU y actualiza cotizacion.json. Lo ejecuta GitHub Actions.
 """
