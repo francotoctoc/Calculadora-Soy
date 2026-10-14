@@ -1,0 +1,84 @@
+"""
+Consulta el dólar interbancario (billete, código 2225) en el servicio web
+público del BCU y actualiza cotizacion.json. Lo ejecuta GitHub Actions.
+"""
+import json, re, sys, urllib.request
+from datetime import date, timedelta, datetime, timezone
+
+URL = "https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/awsbcucotizaciones"
+MONEDA = 2225  # DLS. USA BILLETE (interbancario)
+ARCHIVO = "cotizacion.json"
+
+hasta = date.today()
+desde = hasta - timedelta(days=15)  # margen para fines de semana y feriados
+
+body = f"""<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:cot="Cotiza">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <cot:wsbcucotizaciones.Execute>
+      <cot:Entrada>
+        <cot:Moneda><cot:item>{MONEDA}</cot:item></cot:Moneda>
+        <cot:FechaDesde>{desde.isoformat()}</cot:FechaDesde>
+        <cot:FechaHasta>{hasta.isoformat()}</cot:FechaHasta>
+        <cot:Grupo>0</cot:Grupo>
+      </cot:Entrada>
+    </cot:wsbcucotizaciones.Execute>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
+req = urllib.request.Request(URL, data=body.encode("utf-8"), headers={
+    "Content-Type": "text/xml; charset=utf-8",
+    "SOAPAction": '"Cotizaaction/AWSBCUCOTIZACIONES.Execute"',
+})
+with urllib.request.urlopen(req, timeout=60) as r:
+    xml = r.read().decode("utf-8", "replace")
+
+def campo(bloque, nombre):
+    m = re.search(rf"<(?:\w+:)?{nombre}>([^<]*)</(?:\w+:)?{nombre}>", bloque)
+    return m.group(1).strip() if m else None
+
+estado = campo(xml, "status")
+if estado is not None and estado != "1":
+    print("El BCU respondió con error:", campo(xml, "mensaje"), "\n", xml[:2000])
+    sys.exit(1)
+
+datos = []
+for bloque in re.findall(r"<(?:\w+:)?datoscotizaciones\.dato>(.*?)</(?:\w+:)?datoscotizaciones\.dato>", xml, re.S):
+    fecha, tcv = campo(bloque, "Fecha"), campo(bloque, "TCV")
+    if fecha and tcv:
+        try:
+            datos.append({"fecha": fecha[:10], "tasa": float(tcv)})
+        except ValueError:
+            pass
+
+if not datos:
+    print("No se encontraron cotizaciones en la respuesta:\n", xml[:2000])
+    sys.exit(1)
+
+datos.sort(key=lambda d: d["fecha"])
+ultimo = datos[-1]
+
+try:
+    anterior = json.load(open(ARCHIVO, encoding="utf-8"))
+except Exception:
+    anterior = {}
+
+historial = {h["fecha"]: h["tasa"] for h in anterior.get("historial", [])}
+for d in datos:
+    historial[d["fecha"]] = d["tasa"]
+historial = [{"fecha": f, "tasa": t} for f, t in sorted(historial.items())][-30:]
+
+nuevo = {
+    "fecha": ultimo["fecha"],
+    "tasa": ultimo["tasa"],
+    "fuente": "BCU - dólar billete interbancario (2225)",
+    "consultado": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    "historial": historial,
+}
+
+if anterior.get("fecha") == nuevo["fecha"] and anterior.get("tasa") == nuevo["tasa"]:
+    print("Sin cambios:", nuevo["fecha"], nuevo["tasa"])
+    sys.exit(0)
+
+json.dump(nuevo, open(ARCHIVO, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+print("Cotización actualizada:", nuevo["fecha"], nuevo["tasa"])
