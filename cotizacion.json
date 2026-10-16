@@ -1,8 +1,8 @@
 {
-  "fecha": "2026-10-15",
-  "tasa": 40.135,
+  "fecha": "2026-10-16",
+  "tasa": 40.097,
   "fuente": "BCU - dólar billete interbancario (2225)",
-  "consultado": "2026-10-15T20:15:25+00:00",
+  "consultado": "2026-10-16T20:11:55+00:00",
   "historial": [
     {
       "fecha": "2026-09-29",
@@ -51,6 +51,10 @@
     {
       "fecha": "2026-10-15",
       "tasa": 40.135
+    },
+    {
+      "fecha": "2026-10-16",
+      "tasa": 40.097
     }
   ]
 }
