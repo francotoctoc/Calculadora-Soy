@@ -347,6 +347,9 @@ footer a{color:inherit}
   let rate = null; // {tasa, fecha}
   let lastEdited = "puntos";
   let mult = 1;
+  // El banco redondea el valor del punto a 4 decimales (ej. 1/40,191 = 0,02488 -> 0,0249)
+  const pv = t => Math.round(10000/t)/10000;
+  const r2 = v => Math.round(v*100 + 1e-7)/100;
   const fmtMult = m => "x"+String(m).replace(".",",");
   const LINK15 = "https://viajes.soysantander.com.uy/paquetes/shop?tags=ciberlunesseleccionados";
   function setMult(m, updHash){
@@ -374,8 +377,8 @@ footer a{color:inherit}
       n.textContent="Cargando la cotización…";
       recalc(); return;
     }
-    $("vPunto").textContent = "US$ " + fmtNum(mult/rate.tasa,4);
-    if(mult!==1){ const s=document.createElement("span"); s.className="was"; s.textContent="US$ "+fmtNum(1/rate.tasa,4); $("vPunto").appendChild(s); }
+    $("vPunto").textContent = "US$ " + fmtNum(pv(rate.tasa)*mult,4);
+    if(mult!==1){ const s=document.createElement("span"); s.className="was"; s.textContent="US$ "+fmtNum(pv(rate.tasa),4); $("vPunto").appendChild(s); }
     $("vTasa").textContent = "$ " + fmtNum(rate.tasa,3);
     $("vFecha").textContent = fmtFecha(rate.fecha);
     recalc();
@@ -386,17 +389,17 @@ footer a{color:inherit}
     if(lastEdited==="puntos"){
       const p = parseInt10($("inPuntos").value);
       if(!has || isNaN(p)){ if(document.activeElement!==$("inUSD")) $("inUSD").value=""; $("hUSD").textContent=""; $("hPuntos").textContent = isNaN(p)?"":fmtPts(p)+" puntos"; return; }
-      const usd = Math.round(p/rate.tasa*mult*100)/100;
+      const usd = r2(p*pv(rate.tasa)*mult);
       $("inUSD").value = fmtNum(usd,2);
       $("hPuntos").textContent = fmtPts(p)+" puntos";
-      $("hUSD").textContent = "Descuento a aplicar: "+fmtUSD(usd) + (mult!==1 ? " (con "+fmtMult(mult)+"; sin promo serían "+fmtUSD(Math.round(p/rate.tasa*100)/100)+")" : "");
+      $("hUSD").textContent = "Descuento a aplicar: "+fmtUSD(usd) + (mult!==1 ? " (con "+fmtMult(mult)+"; sin promo serían "+fmtUSD(r2(p*pv(rate.tasa)))+")" : "");
     } else {
       const u = parseDec($("inUSD").value);
       if(!has || isNaN(u)){ if(document.activeElement!==$("inPuntos")) $("inPuntos").value=""; $("hPuntos").textContent=""; $("hUSD").textContent=""; return; }
-      const pts = Math.floor(u*rate.tasa/mult + 1e-9);
+      const pts = Math.floor(u/(pv(rate.tasa)*mult) + 1e-9);
       $("inPuntos").value = fmtPts(pts);
       $("hUSD").textContent = fmtUSD(u);
-      $("hPuntos").textContent = "Equivale a "+fmtPts(pts)+" puntos" + (mult!==1 ? " (con "+fmtMult(mult)+"; sin promo serían "+fmtPts(Math.floor(u*rate.tasa+1e-9))+")" : "");
+      $("hPuntos").textContent = "Equivale a "+fmtPts(pts)+" puntos" + (mult!==1 ? " (con "+fmtMult(mult)+"; sin promo serían "+fmtPts(Math.floor(u/pv(rate.tasa)+1e-9))+")" : "");
     }
   }
 
@@ -408,7 +411,7 @@ footer a{color:inherit}
   $("btnCopy").addEventListener("click",async()=>{
     const p=$("inPuntos").value, u=$("inUSD").value;
     if(!p||!u||!rate) return;
-    const txt = p+" puntos Soy Santander = US$ "+u+(mult!==1?" con Ciberlunes "+fmtMult(mult):"")+" (cotización "+fmtFecha(rate.fecha)+", 1 punto = US$ "+fmtNum(mult/rate.tasa,4)+")";
+    const txt = p+" puntos Soy Santander = US$ "+u+(mult!==1?" con Ciberlunes "+fmtMult(mult):"")+" (cotización "+fmtFecha(rate.fecha)+", 1 punto = US$ "+fmtNum(pv(rate.tasa)*mult,4)+")";
     try{ await navigator.clipboard.writeText(txt); $("btnCopy").textContent="Texto copiado"; }
     catch(e){ $("btnCopy").textContent="No se pudo copiar"; }
     setTimeout(()=>$("btnCopy").textContent="Pasar a texto",1800);
@@ -420,7 +423,7 @@ footer a{color:inherit}
     const tb=$("histBody"); tb.textContent="";
     (h||[]).slice().reverse().slice(0,10).forEach(r=>{
       const tr=document.createElement("tr");
-      [fmtFecha(r.fecha),"$ "+fmtNum(r.tasa,3),"US$ "+fmtNum(1/r.tasa,4)].forEach(t=>{const td=document.createElement("td");td.textContent=t;tr.appendChild(td);});
+      [fmtFecha(r.fecha),"$ "+fmtNum(r.tasa,3),"US$ "+fmtNum(pv(r.tasa),4)].forEach(t=>{const td=document.createElement("td");td.textContent=t;tr.appendChild(td);});
       tb.appendChild(tr);
     });
     $("hist").style.display = (h&&h.length)?"block":"none";
