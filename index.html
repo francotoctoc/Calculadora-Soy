@@ -442,7 +442,11 @@ footer a{color:inherit}
       const r = await fetch("cotizacion.json?t="+Date.now(),{cache:"no-store"});
       if(!r.ok) throw new Error(r.status);
       const d = await r.json();
-      rate = {tasa:Number(d.tasa), fecha:d.fecha};
+      // El banco aplica el último cierre del BCU ANTERIOR a hoy (el cierre de hoy rige recién desde mañana)
+      const hoy = todayISO();
+      const previos = (d.historial||[]).filter(x=>x && x.fecha < hoy && Number(x.tasa)>0).sort((a,b)=>a.fecha<b.fecha?-1:1);
+      const usar = previos.length ? previos[previos.length-1] : d;
+      rate = {tasa:Number(usar.tasa), fecha:usar.fecha};
       renderRate(); renderHist(d.historial);
     }catch(e){
       rate=null; renderRate(); $("hist").style.display="none";
