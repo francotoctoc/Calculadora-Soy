@@ -189,7 +189,8 @@ footer a{color:inherit}
   </section>
   <div class="notice" id="notice" role="status"></div>
 
-  <section class="promo-picker" aria-label="Tipo de canje">
+  <!-- PROMO CIBERLUNES: diseño guardado para futuras promos. Para activarla, cambiar PROMO_ACTIVA a true en el script. -->
+  <section class="promo-picker" id="promoPicker" aria-label="Tipo de canje" hidden>
     <div class="lbl">Tipo de canje</div>
     <div class="seg" role="group">
       <button type="button" data-mult="1" aria-pressed="true"><span class="t">Sin promo</span><span class="s">Valor normal del punto</span></button>
@@ -314,6 +315,11 @@ footer a{color:inherit}
 </div>
 
 <script>
+// ===== CONFIGURACIÓN DE PROMO =====
+// false = calculadora normal (sin botones de promo)
+// true  = muestra los botones Ciberlunes x1,3 y x1,5 con su diseño
+const PROMO_ACTIVA = false;
+
 (function(){
   const $ = id => document.getElementById(id);
   const fmtUSD = n => "US$ " + n.toLocaleString("es-UY",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -467,8 +473,13 @@ footer a{color:inherit}
     document.addEventListener("keydown",e=>{ if(e.key==="Escape") close(); });
   })();
   cargar();
-  setMult(location.hash==="#x13"?1.3:location.hash==="#x15"?1.5:1,false);
-  window.addEventListener("hashchange",()=>setMult(location.hash==="#x13"?1.3:location.hash==="#x15"?1.5:1,false));
+  if(PROMO_ACTIVA){
+    $("promoPicker").hidden = false;
+    setMult(location.hash==="#x13"?1.3:location.hash==="#x15"?1.5:1,false);
+    window.addEventListener("hashchange",()=>setMult(location.hash==="#x13"?1.3:location.hash==="#x15"?1.5:1,false));
+  } else {
+    setMult(1,false);
+  }
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) cargar(); });
 })();
 </script>
